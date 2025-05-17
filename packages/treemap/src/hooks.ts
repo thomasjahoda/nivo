@@ -1,4 +1,4 @@
-import { createElement, useCallback, useMemo, MouseEvent } from 'react'
+import { createElement, useCallback, useMemo, MouseEvent, useState, useEffect } from 'react'
 import omit from 'lodash/omit.js'
 import cloneDeep from 'lodash/cloneDeep.js'
 import startCase from 'lodash/startCase.js'
@@ -286,11 +286,19 @@ export const useInteractiveTreeMapNodes = <Datum extends object>(
         tooltip: TreeMapCommonProps<Datum>['tooltip']
     }
 ): ComputedNodeWithHandlers<Datum>[] => {
+    const [shownTooltipInfo, setShownTooltipInfo] = useState<{
+        nodeId: string
+        nodePath: string
+    } | null>(null)
     const { showTooltipFromEvent, hideTooltip } = useTooltip()
 
     const showTooltip = useCallback(
         (node: ComputedNode<Datum>, event: MouseEvent) => {
             showTooltipFromEvent(createElement(tooltip, { node }), event, 'left')
+            setShownTooltipInfo({
+                nodeId: node.id,
+                nodePath: node.path,
+            })
         },
         [showTooltipFromEvent, tooltip]
     )
@@ -298,6 +306,10 @@ export const useInteractiveTreeMapNodes = <Datum extends object>(
     const handleMouseEnter = useCallback(
         (node: ComputedNode<Datum>, event: MouseEvent) => {
             showTooltip(node, event)
+            setShownTooltipInfo({
+                nodeId: node.id,
+                nodePath: node.path,
+            })
             onMouseEnter?.(node, event)
         },
         [onMouseEnter, showTooltip]
@@ -306,6 +318,10 @@ export const useInteractiveTreeMapNodes = <Datum extends object>(
     const handleMouseMove = useCallback(
         (node: ComputedNode<Datum>, event: MouseEvent) => {
             showTooltip(node, event)
+            setShownTooltipInfo({
+                nodeId: node.id,
+                nodePath: node.path,
+            })
             onMouseMove?.(node, event)
         },
         [onMouseMove, showTooltip]
@@ -314,6 +330,7 @@ export const useInteractiveTreeMapNodes = <Datum extends object>(
     const handleMouseLeave = useCallback(
         (node: ComputedNode<Datum>, event: MouseEvent) => {
             hideTooltip()
+            setShownTooltipInfo(null)
             onMouseLeave?.(node, event)
         },
         [onMouseLeave, hideTooltip]
@@ -325,6 +342,22 @@ export const useInteractiveTreeMapNodes = <Datum extends object>(
         },
         [onClick]
     )
+
+    /**
+     * Node paths are used as React element keys, so use them to check if the node for which the tooltip is shown is still in the DOM.
+     * The mouse leave event will not be triggered when the node is removed from the DOM, so if we don't clean this up, the tooltip will stay shown until a tooltip is shown for another node.
+     */
+    const nodePathsSet = useMemo(() => {
+        const nodeIds = nodes.map(node => node.path)
+        return new Set(nodeIds)
+    }, [nodes])
+    useEffect(() => {
+        if (shownTooltipInfo !== null && !nodePathsSet.has(shownTooltipInfo.nodePath)) {
+            // node was removed from the DOM, so hide the tooltip
+            hideTooltip()
+            setShownTooltipInfo(null)
+        }
+    }, [hideTooltip, shownTooltipInfo, nodePathsSet])
 
     return useMemo(
         () =>

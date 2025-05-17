@@ -14,7 +14,13 @@ export const useMeasure = () => {
         // Check if ResizeObserver is defined in current env (could be browser, node.js, jsdom etc.).
         if (typeof ResizeObserver === 'undefined') return null
 
-        return new ResizeObserver(([entry]) => setBounds(entry.contentRect))
+        return new ResizeObserver(([entry]) => {
+            // TODO not used anymore, document patching react-virtualized-auto-sizer
+            /* patched: do not trigger resize when display:none makes element be hidden */
+            if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                setBounds(entry.contentRect)
+            }
+        })
     })
 
     useEffect(() => {

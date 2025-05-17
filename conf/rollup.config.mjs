@@ -15,7 +15,7 @@ const babelConfig = {
     extensions,
     exclude: /node_modules/,
     babelHelpers: 'bundled',
-    comments: false,
+    comments: true,
 }
 
 const externals = [
@@ -52,7 +52,7 @@ const commonPlugins = [
         modulesOnly: true,
     }),
     babel(babelConfig),
-    !isWatching && terser(),
+    // !isWatching && terser(),
     cleanup()
 ]
 
